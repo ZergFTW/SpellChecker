@@ -1,166 +1,108 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+using SpellChecker;
 
 namespace SpellChecker
 {
    class Program
    {
-      static void Main(string[] args)
+      private static DictionaryTree dictionary;
+      private const String finishingString = "===";
+
+      private static void Main(string[] args)
       {
+         dictionary = new DictionaryTree(2);
 
-         List<int>[] arr = new List<int>[2];
-         arr[0] = new List<int>();
-         arr[0].Add(1);
-         Console.WriteLine(arr[0][0]);
+         Console.WriteLine("Добро пожаловать в программу Spell Checker!\nВы можете загрузить словарь с помощью ключа -d путь_к_словарю ");
+         Console.WriteLine($"Либо руками вводите слова для словаря через пробел или с новой строки.\nВведите {finishingString} для завершения словаря");
 
-
-         /*List<String> GenerateDeletions(String word, int numberOfDeletions = 1)
+/*         int previousWordsCount = dictionary.WordsCount;
+         while (ReadLineToDictionary(finishingString))
          {
-            if (numberOfDeletions < 1)
-            {
-               throw new ArgumentException(nameof(numberOfDeletions));
-            }
-
-            // word should be long enough to have letters for all deletes AND all deletion gaps
-            if (String.IsNullOrWhiteSpace(word) || word.Length < numberOfDeletions * 2 - 1)
-            {
-               throw new ArgumentException(nameof(word));
-            }
-
-            var result = new List<String>();
-            // contains positions of letters marked for deletion
-            int[] del = new int[numberOfDeletions];
-            for (int i = 0; i < del.Length; i++)
-            {
-               // setting gaps between dels
-               del[i] = i * 2;
-            }
-
-            // loop through deletions, untill first deletion position reaches last awailable point
-            // each cycle we getting new variation of misspell
-            int delLast = del.Length - 1;
-            while (true)
-            {
-               result.Add(RemoveLetters(word, del));
-               if (del[delLast] < word.Length - 1)
-               {
-                  ++del[delLast];
-               }
-               else
-               // del[delLast] in rightmost position
-               {
-                  // only one deletion needed
-                  if (delLast == 0)
-                  {
-                     return result;
-                  }
-
-                  for (int i = delLast - 1; i >= 0; --i)
-                  {
-                     // searching, what else can be shifted to the right
-                     if (del[i] < del[i + 1] - 2)
-                     {
-                        // shifting
-                        ++del[i];
-
-                        // shifting everiting on right side to the left
-                        for (int j = i + 1; i < del.Length; ++i)
-                        {
-                           del[j] = del[j - 1] + 2;
-                        }
-                        break;
-                     }
-                     else // element can't be shifted to the right
-                     {
-                        // del[0] can't be shiftet to the right - done
-                        if (i == 0)
-                        {
-                           return result;
-                        }
-                     }
-                  }
-               }
-            }
+            Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов");
+            Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
+            previousWordsCount = dictionary.WordsCount;
          }*/
+         ReadDictionatyFromFile(@"C:/dict.txt");
 
-         /*String RemoveLetters(String word, int[] letters)
+         Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
+         Console.WriteLine($"Введите текст для проверки. Для завершения, введите {finishingString}");
+
+         while (true)
          {
-            for (int i = letters.Length - 1; i >= 0; --i)
+            String correctedLine = ReadLineToCorrection(finishingString);
+            if (correctedLine == null)
             {
-               word = word.Remove(letters[i], 1);
+               break;
             }
-            return word;
-         }*/
+            Console.WriteLine(correctedLine);
+         }
       }
 
-      public static List<int> GnomeSort(List<int> list)
+      static void ReadDictionatyFromFile(String filePath)
       {
-         int current = 0;
-         while (current < list.Count() - 1)
+         StreamReader sr = new StreamReader(filePath);
+         while (true)
          {
-            if (list[current] > list[current + 1])
+            String line = sr.ReadLine();
+            if (line == null)
             {
-               Swap(ref list, current, current + 1);
-               --current;
+               break;
             }
-            else
-            {
-               ++current;
-            }
-         }
 
-         return list;
+            AddLineToDictionary(line);
+         }
       }
 
-      public static void Swap(ref List<int> list, int i, int j)
+      // return false if user enters endLine as separate line
+      static bool ReadLineToDictionary(String endLine)
       {
-         int temp = list[i];
-         list[i] = list[j];
-         list[j] = temp;
+         String input = Console.ReadLine();
+         if (input == endLine)
+         {
+            return false;
+         }
+
+         AddLineToDictionary(input);
+
+         return true;
       }
 
-      public static int MySearch(List<int> list, int value)
+      static void AddLineToDictionary(String inputLine)
       {
-         // not shure is it perfomance hit or improvement
-         // probably, on dictionary loading - improvement, but on dictionary use - hit
-         /*if (list.Count() == 0 || list[0].CompareTo(value) < 0)
+         String[] splitted = inputLine.Split(' ');
+
+         for (int i = 0; i < splitted.Length; ++i)
          {
-            return ~0;
+            if (String.IsNullOrWhiteSpace(splitted[i]))
+            {
+               continue;
+            }
+
+            dictionary.AddWord(splitted[i].Trim());
+         }
+      }
+
+      // return null if user enters endLine as separate line
+      static String ReadLineToCorrection(String endLine)
+      {
+         String input = Console.ReadLine();
+         if (input == endLine)
+         {
+            return null;
          }
 
-         if (list[list.Count() - 1].CompareTo(value) > 0)
-         {
-            return ~list.Count();
-         }*/
+         Regex wordRegex = new Regex(@"\w+");
+         return wordRegex.Replace(input, CorrectWord);
+      }
 
-         int left = 0;
-         int right = list.Count();
-         int mid = 0;
-
-         while (left < right)
-         {
-            // no need in overflow protection - alphabet is too short
-            mid = (left + right) / 2;
-            int result = value.CompareTo(list[mid]);
-            if (result < 0)
-            {
-               right = mid;
-            }
-            else if (result > 0)
-            {
-               left = mid + 1;
-            }
-            else
-            {
-               return mid;
-            }
-         }
-         // should be right, not mid - we need to return lastIndex + 1, if value > last
-         return ~right;
+      static string CorrectWord(Match m)
+      {
+         return dictionary.GetCorrectedWord(m.Value);
       }
    }
 }

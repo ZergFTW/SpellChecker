@@ -5,117 +5,263 @@ using System.Text;
 
 namespace SpellChecker
 {
-   class DictionaryTree
+   public class DictionaryTree
    {
-      private const int MaxMisspels = 2;
+      private int MaxMisprints { get; }
       private readonly Node root;
 
-      public DictionaryTree()
+      public DictionaryTree(int maxMisprints = 2)
       {
-         root = new Node(value:'\0', parent:null);
+         this.MaxMisprints = maxMisprints;
+         root = new Node(value:'\0');
       }
 
-      // return false if wolr already in dictionary, throw Argument
+      public int WordsCount
+      {
+         get { return root.Index;  }
+      }
+
+      /* Adds new word to dictionary.
+      Generates and adds all misprints for this word (only deletes)
+      throw ArgumentException if word is empty or null */
       public bool AddWord(String word)
       {
-         if (String.IsNullOrWhiteSpace(word))
-            throw new ArgumentException(nameof(word));
+         Node correctWordNode = Node.AddWord(root, word);
 
-         Node correctWordNode = root.AddWord(word);
-
-         if (correctWordNode == null) // word already in dictionary
-            return false;
-
-         int max = MaxWordDeletions(word.Length);
-         for (int d = 1; d <= max; ++d)
+         if (correctWordNode == null)
          {
-            List<String> deletionsList = GenerateDeletions(word, d);
-            for (int i = 0; i < deletionsList.Count; ++i)
+            // word already in the dictionary, we dont need to generate misprints
+            return false;
+         }
+
+         int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
+
+         for (int deletionsCount = 1; deletionsCount <= maxDeletions; ++deletionsCount)
+         {
+            // list of misprinted variants (deletions only)
+            List<String> misprintsList = GenerateDeletions(word, deletionsCount);
+
+            // push misprints to dictionary
+            for (int i = 0; i < misprintsList.Count; ++i)
             {
-               root.AddWord(deletionsList[i], d, correctWordNode);
+               Node.AddMisprintedWord(root, misprintsList[i], deletionsCount, correctWordNode);
             }
          }
 
          return true;
       }
 
-      // calculates, how much deletions can be in word with given length
-      // word should be long enough to have letters for all deletes AND all deletion gaps
-      private static int MaxWordDeletions(int wordLength)
-      {
-         int maxPossibleDeletions = (wordLength + 1) / 2;
-         return maxPossibleDeletions < MaxMisspels ? maxPossibleDeletions : MaxMisspels;
-      }
+      /* searches for input in dictionary
+      if word found - returns it as is
 
-      /* generates possible mistakes - only deletions, excluding deletions in adjasted positions
-      throws ArgumentException if word is empty or too short
-      throws ArgumentException if number of deletions < 1 */
-      private static List<String> GenerateDeletions(String word, int numberOfDeletions = 1)
+      if one misprint with minimal edits found - return it as in dictionary
+      otherwise returns all possible misprints with minimal number of edits as {possibleWord1, PossibleWord2, ...}
+
+      misprints with higher number of edits ignored, if there is some lower edits misprints
+
+      if no word and misprints found - return original word as {word?} */
+      public String GetCorrectedWord(String inputWord)
       {
-         if (numberOfDeletions < 1)
+         if (String.IsNullOrEmpty(inputWord))
+            throw new ArgumentNullException(nameof(inputWord));
+
+         Node endNode = Node.FindNodeByWord(root, inputWord);
+
+         // exact word found! Yay!
+         if (endNode != null && endNode.IsEndOfWord)
          {
-            throw new ArgumentException(nameof(numberOfDeletions));
+            return inputWord;
          }
 
-         if (String.IsNullOrWhiteSpace(word) || numberOfDeletions > MaxWordDeletions(word.Length))
+         List<Node> misprints = GetPossibleMisprints(inputWord);
+
+         if (misprints.Count == 0)
          {
+            return String.Concat("{", inputWord, "?}");
+         }
+         else if (misprints.Count == 1)
+         {
+            return misprints[0].Word;
+         }
+         else
+         {
+            StringBuilder sb = new StringBuilder();
+            sb.Append('{');
+            for (int i = 0; i < misprints.Count; ++i)
+            {
+               sb.Append(misprints[i].Word);
+               sb.Append(" ");
+            }
+
+            sb[sb.Length - 1] = '}';
+            return sb.ToString();
+         }
+      }
+
+      // helper for GetCorrectedWord
+      private List<Node> GetPossibleMisprints(String inputWord)
+      {
+         // put results here
+         HashSet<Node> resultHash = new HashSet<Node>();
+
+         // keep generated deletions for deeper level of misprints
+         int maxDeletionsForInput = MaxDeletionsForWordLength(inputWord.Length, MaxMisprints);
+         List<string>[] inputWithDels = new List<string>[maxDeletionsForInput + 1];
+         inputWithDels[0] = new List<string>
+         {
+            inputWord.ToLower() // for consistency we put original word as word with 0 deletes
+         };
+
+         // starting from one misprint
+         for (int misprintsLevel = 1; misprintsLevel <= MaxMisprints; ++misprintsLevel)
+         {
+            // first, lets generate deletions for current level of misprints
+            if (maxDeletionsForInput >= misprintsLevel)
+            {
+               inputWithDels[misprintsLevel] = GenerateDeletions(inputWord, misprintsLevel);
+            }
+
+            /* we need to iterate on all possible misprints combinations on this misprint level
+            for brevity d - deletion, i - insertion
+            i.e. if we search for 3 misprints - it can be 3d + 0i or 2d + 1i or 1d + 2i or 0d + 3i 
+            and we need all of them */
+            for (int deletes = 0; deletes <= misprintsLevel; ++deletes)
+            {
+               int inserts = misprintsLevel - deletes;
+               if (inserts >= inputWithDels.Length)
+               {
+                  continue; // word is too short - there is not enough letters for such number of insert mistakes
+               }
+
+               /* to find insertion misprints, remove as many letters from input and search for it in dictionary
+               first element of input with dels contains original word
+               deletions already in the dictionary so we need just to look at dictionary misprints 
+               and for combined misprints we remove some letters and search for deletions */
+               for (int i = 0; i < inputWithDels[inserts].Count; ++i)
+               {
+                  resultHash.UnionWith(GetDeletionMisprints(deletes, inputWithDels[inserts][i]));
+               }
+            }
+
+            if (resultHash.Count > 0) // we found something! 
+            {
+               break;
+            }
+
+         } // global misprints loop
+
+         List<Node> resultNodesList = resultHash.ToList();
+         // sorting by index - results must be in the same order as in the dictionary :-/
+         resultNodesList.Sort((a, b) => a.Index.CompareTo(b.Index));
+         return resultNodesList;
+      }
+
+      // helper for GetPossibleMisprints
+      private HashSet<Node> GetDeletionMisprints(int deletions, String word)
+      {
+         Node node = Node.FindNodeByWord(root, word);
+         if (node == null)
+         {
+            return new HashSet<Node>();
+         }
+         return node.GetMisprints(deletions);
+      }
+
+      /* calculates, how much deletes can be in word with given length
+      word should be long enough to have letters for all deletes AND all deletion gaps 
+      if maxMisprintsForDictionary < 0 - ignores it */
+      public static int MaxDeletionsForWordLength(int wordLength, int maxMisprintsForDictionary = -1)
+      {
+         int maxPossibleDeletions = (wordLength + 1) / 2;
+
+         if (maxMisprintsForDictionary < 0)
+         {
+            return maxPossibleDeletions;
+         }
+         else
+         {
+            return maxPossibleDeletions < maxMisprintsForDictionary ? maxPossibleDeletions : maxMisprintsForDictionary;
+         }
+      }
+
+      /* generates possible mistakes - only deletes, excluding deletes in adjasted positions
+      generated list CAN contain equal strings (for example if word contain doubled letter e.g. miss -> iss, mss, mis, mis)
+      throws ArgumentException if word is empty or too short
+      throws ArgumentException if number of deletes < 0 */
+      public static List<String> GenerateDeletions(String word, int numberOfDeletions = 1)
+      {
+         if (numberOfDeletions < 0)
+            throw new ArgumentException(nameof(numberOfDeletions));
+
+         if (String.IsNullOrEmpty(word) || numberOfDeletions > MaxDeletionsForWordLength(word.Length))
             throw new ArgumentException(nameof(word));
+         
+         word = word.ToLower();
+         if (numberOfDeletions == 0)
+         {
+            return new List<string>() {word};
          }
 
          var result = new List<String>();
          // contains positions of letters marked for deletion
-         int[] del = new int[numberOfDeletions];
-         for (int i = 0; i < del.Length; i++)
+         int[] deletes = new int[numberOfDeletions];
+         for (int i = 0; i < deletes.Length; i++)
          {
-            // setting gaps between dels
-            del[i] = i * 2;
+            // setting gaps between deletes
+            deletes[i] = i * 2;
          }
 
-         // loop through deletions, untill first deletion position reaches last awailable point
-         // each cycle we getting new variation of misspell
-         int delLast = del.Length - 1;
+         // loop through deletes, untill first deletion position reaches last awailable point
+         // each cycle we getting new variation of misprint
+         int lastDeletes = deletes.Length - 1;
          while (true)
          {
-            result.Add(RemoveLetters(word, del));
-            if (del[delLast] < word.Length - 1)
+            result.Add(RemoveLetters(word, deletes));
+            if (deletes[lastDeletes] < word.Length - 1) // we can move deletes.last to the right
             {
-               ++del[delLast];
+               ++deletes[lastDeletes];
             }
-            else
-            // del[delLast] in rightmost position
+            else // deletes.last in rightmost position
             {
-               // only one deletion needed
-               if (delLast == 0)
+               int delPosForRightShift = FindClosestUnshiftedDeletePos(deletes);
+
+               if (delPosForRightShift < 0) // nothing left to shift
                {
                   return result;
                }
-
-               for (int i = delLast - 1; i >= 0; --i)
+               else
                {
-                  // searching, what else can be shifted to the right
-                  if (del[i] < del[i + 1] - 2)
+                  ++deletes[delPosForRightShift];
+                  // shifting everithing else to the left
+                  for (int delPosForLeftShift = delPosForRightShift + 1; delPosForLeftShift < deletes.Length; ++delPosForLeftShift)
                   {
-                     // shifting
-                     ++del[i];
-
-                     // shifting everiting on right side to the left
-                     for (int j = i + 1; i < del.Length; ++i)
-                     {
-                        del[j] = del[j - 1] + 2;
-                     }
-                     break;
-                  }
-                  else // element can't be shifted to the right
-                  {
-                     // del[0] can't be shiftet to the right - done
-                     if (i == 0)
-                     {
-                        return result;
-                     }
+                     deletes[delPosForLeftShift] = deletes[delPosForLeftShift - 1] + 2;
                   }
                }
             }
          }
+      }
+
+      // helper for GenerateDeletions
+      private static int FindClosestUnshiftedDeletePos(int[] deletes)
+      {
+         if (deletes.Length == 1)
+         {
+            return -1;
+         }
+
+         // searching from right to left, starting from penult element
+         for (int i = deletes.Length - 2; i >= 0; --i)
+         {
+            // there is more than 1 letter beetwen this letter and letter to the right
+            if (deletes[i] < deletes[i + 1] - 2) 
+            {
+               return i;
+            }
+         }
+
+         // everything shifted to the right
+         return -1;
       }
 
       // helper for GenerateDeletions
@@ -126,177 +272,6 @@ namespace SpellChecker
             word = word.Remove(letters[i], 1);
          }
          return word;
-      }
-
-      private class Node
-      {
-         private readonly char value;
-         private readonly Node parent;
-         private List<Node> children;
-         private bool isEndOfWord;
-         private List<Node>[] misspells;
-
-         public char Value { get; }
-         public Node Parent { get; }
-         public bool IsEndOfWord { get; set; }
-         public List<Node>[] Misspells { get; } // warning! misspels list can be null
-         
-         public Node(char value, Node parent, bool isEndOfWord = false)
-         {
-            this.value = value;
-            this.parent = parent;
-            this.isEndOfWord = isEndOfWord;
-            children = new List<Node>();
-            misspells = new List<Node>[MaxMisspels];
-         }
-         
-         public String Word
-         {
-            // returns word, which ends on this node
-            get
-            {
-               // root node
-               if (this.parent == null)
-               {
-                  return "";
-               }
-               StringBuilder sb = new StringBuilder();
-               Node n = this;
-               do
-               {
-                  sb.Insert(0, n.value);
-                  n = n.parent;
-               } while (n.parent != null);
-
-               return sb.ToString();
-            }
-         }
-
-         // return endnode on success, null if word is repeated (only for correct words
-         // warning! there is no repetition checks for misspelled words
-         public Node AddWord(String word, int deletions = 0, Node correctWordNode = null)
-         {
-            if (String.IsNullOrWhiteSpace(word) || word.Length < 1)
-               throw new ArgumentException(nameof(word));
-
-            if (deletions < 0 || deletions > MaxMisspels)
-               throw new ArgumentException(nameof(deletions));
-
-            if (deletions > 0 && correctWordNode == null)
-               throw new ArgumentException(nameof(correctWordNode));
-
-            char[] chWord = word.ToLower().ToCharArray();
-
-            Node currentNode = this;
-
-            
-            for (int i = 0; i < chWord.Length - 1; ++i)
-            {
-               currentNode = currentNode.AddNode(chWord[i]);
-            }
-            // last node need special threatment
-            currentNode = currentNode.AddNode(chWord[chWord.Length - 1], true, deletions, correctWordNode);
-
-            return currentNode;
-         }
-
-
-         /* helper for Node.AddWord arguments must be checked in AddWord
-         return null if word is already exists, only for last node in the word (isEndOfWord = true && deletions = 0)
-         returns Node (new, or existing), which contains current char
-         to add misspeled variant of word, isEndOfWord must be true and deletions must be > 0;
-         deletions ignored if isEndOfWord == false */
-         private Node AddNode(char c, bool isEndOfWord = false, int deletions = 0, Node correctWordNode = null)
-         {
-            int position = SearchChildrenByChar(c);
-            if (position >= 0) // node aldreaady exists
-            {
-               if (isEndOfWord) // last node
-               {
-                  if (deletions == 0) // correct word
-                  {
-                     // word already exists (dictionary has repeats)! Abort mission!
-                     if (children[position].IsEndOfWord)
-                        return null;
-
-                     // node already exists, but not marked as word end - new word
-                     children[position].IsEndOfWord = true;
-                  }
-                  else // misspeled word - add it to list of misspells
-                  {
-                     AddMisspell(deletions, correctWordNode);
-                  }
-               }
-            }
-            else // new node required
-            {
-               position = ~position;
-               Node newNode = new Node(c, this, isEndOfWord);
-               children.Insert(position, newNode);
-            }
-
-            return children[position];
-         }
-
-         // helper for AddNode
-         // doesn't check arguments, doesn't check for repeats - should be checked earlier
-         private void AddMisspell(int deletions, Node correctWord)
-         {
-            if (misspells[deletions - 1] == null)
-            {
-               misspells[deletions - 1] = new List<Node>();
-            }
-
-            misspells[deletions - 1].Add(correctWord);
-         }
-
-         // Helper method, returns position of the node in children.
-         // If there is no such node, returns ~position (like List<T>.BinarySearch)
-         private int SearchChildrenByChar(char c)
-         {
-            /* not shure is it perfomance hit or improvement
-            probably, on dictionary loading - improvement,
-            but on dictionary use - hit, especially with large dictionary */
-
-            /*
-            if (list.Count() == 0 || list[0].CompareTo(value) < 0)
-            {
-               return ~0;
-            }
-
-            if (list[list.Count() - 1].CompareTo(value) > 0)
-            {
-               return ~list.Count();
-            }*/
-
-            int left = 0;
-            int right = children.Count();
-            int mid = 0;
-
-            while (left < right)
-            {
-               // no need in overflow protection - alphabet is too short
-               mid = (left + right) / 2;
-               int result = value.CompareTo(children[mid].value);
-               if (result < 0)
-               {
-                  right = mid;
-               }
-               else if (result > 0)
-               {
-                  left = mid + 1;
-               }
-               else
-               {
-                  return mid;
-               }
-            }
-
-            // should be right, not mid - we need to return lastIndex + 1, if value > lastValue
-            return ~right;
-         }
-
-
       }
    }
 }
