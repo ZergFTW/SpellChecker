@@ -24,7 +24,7 @@ namespace SpellChecker.UnitTests
             };
 
             misprintedNode.AddMisprint(1, correctNode);
-            Assert.IsTrue(misprintedNode.GetMisprints(1).Contains(correctNode));
+            Assert.AreEqual(correctNode, misprintedNode.GetMisprints(1)[0]);
          }
       }
    }

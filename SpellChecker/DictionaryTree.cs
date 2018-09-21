@@ -13,12 +13,7 @@ namespace SpellChecker
       public int MaxMisprints { get; }
 
       private Dictionary<String, Node> dictionary;
-
-      public void Trim()
-      {
-
-      }
-
+      
 
       public DictionaryTree(int maxMisprints = 2)
       {
@@ -186,12 +181,12 @@ namespace SpellChecker
       }
 
       // helper for GetPossibleMisprints
-      private HashSet<Node> GetDeletionMisprints(int deletions, String word)
+      private Node[] GetDeletionMisprints(int deletions, String word)
       {
          Node node = GetNode(word, false);
          if (node == null)
          {
-            return new HashSet<Node>();
+            return new Node[0];
          }
          return node.GetMisprints(deletions);
       }

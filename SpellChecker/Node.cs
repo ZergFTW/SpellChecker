@@ -19,25 +19,25 @@ namespace SpellChecker
       /* Array of HashSets of possible misprinted words 
       array index points on number of misprints in given word
       each list is sorted in alphabet order */
-      private HashSet<Node>[] misprints;
+      private Node[][] misprints;
       
       /* return hashSet of misprints for given node and count of misprints
       return empty hashSet if there is no misprints for given count
       if count = 0, returns this word in hashSet (or empty hash set if this is not correct word)
       throw ArgumentException if count < 0*/
-      public HashSet<Node> GetMisprints(int misprintsCount)
+      public Node[] GetMisprints(int misprintsCount)
       {
          if (misprintsCount < 0)
             throw new ArgumentException(nameof(misprintsCount));
 
          if (misprintsCount == 0)
          {
-            return IsCorrectWord ? new HashSet<Node>() {this} : new HashSet<Node>();
+            return IsCorrectWord ? new Node[] {this} : new Node[0];
          }
 
          if (misprints == null || misprints.Length < misprintsCount)
          {
-            return new HashSet<Node>();
+            return new Node[0];
          }
 
          return misprints[misprintsCount - 1];
@@ -62,10 +62,10 @@ namespace SpellChecker
          // if there is no misptints in ths node - create array and fill it with empty HashSets
          if (misprints == null)
          {
-            misprints = new HashSet<Node>[misprintsCount];
+            misprints = new Node[misprintsCount][];
             for (int i = 0; i < misprintsCount; ++i)
             {
-               misprints[i] = new HashSet<Node>();
+               misprints[i] = new Node[0];
             }
          }
          else if (misprints.Length < misprintsCount) // if array is too short, extend and fill it with empty lists
@@ -74,11 +74,22 @@ namespace SpellChecker
             Array.Resize(ref misprints, misprintsCount);
             for (int i = oldSize; i < misprintsCount; ++i)
             {
-               misprints[i] = new HashSet<Node>();
+               misprints[i] = new Node[0];
             }
          }
 
-         misprints[misprintsCount - 1].Add(correctWordNode);
+         Node.AddUnique(ref misprints[misprintsCount - 1], correctWordNode);
+      }
+
+      static public void AddUnique(ref Node[] array, Node newNode)
+      {
+         if (array.Contains(newNode))
+         {
+            return;
+         }
+
+         Array.Resize(ref array, array.Length + 1);
+         array[array.Length - 1] = newNode;
       }
    }
 }
