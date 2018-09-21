@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using SpellChecker;
+using System.Runtime;
 
 namespace SpellChecker
 {
@@ -17,8 +18,11 @@ namespace SpellChecker
       {
          dictionary = new DictionaryTree(2);
 
-         Console.WriteLine("Добро пожаловать в программу Spell Checker!\nВы можете загрузить словарь с помощью ключа -d путь_к_словарю ");
-         Console.WriteLine($"Либо руками вводите слова для словаря через пробел или с новой строки.\nВведите {finishingString} для завершения словаря");
+         Console.WriteLine("Добро пожаловать в программу Spell Checker!/n" +
+                           "Вы можете загрузить словарь с помощью ключа -d путь_к_словарю");
+         Console.WriteLine("Либо вводите слова через пробел или с новой строки." +
+                           $"Введите {finishingString} для завершения словаря");
+
 
 /*         int previousWordsCount = dictionary.WordsCount;
          while (ReadLineToDictionary(finishingString))
