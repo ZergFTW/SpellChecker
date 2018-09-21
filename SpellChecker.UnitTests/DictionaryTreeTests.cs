@@ -137,7 +137,7 @@ namespace SpellChecker.UnitTests
          [TestMethod]
          public void SearchForCorrectWord_ReturnOriginalWord()
          {
-            Assert.AreEqual(dict.GetCorrectedWord("Rain"), "Rain");
+            Assert.AreEqual("Rain", dict.GetCorrectedWord("Rain"));
          }
 
          [TestMethod]

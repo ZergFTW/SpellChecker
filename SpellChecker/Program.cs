@@ -17,16 +17,17 @@ namespace SpellChecker
       {
          dictionary = new DictionaryTree(2);
 
-         Console.WriteLine("Добро пожаловать в программу Spell Checker!");
-         Console.WriteLine($"Вводите слова для словаря через пробел или с новой строки.\nВведите {finishingString} для завершения словаря");
+         Console.WriteLine("Добро пожаловать в программу Spell Checker!\nВы можете загрузить словарь с помощью ключа -d путь_к_словарю ");
+         Console.WriteLine($"Либо руками вводите слова для словаря через пробел или с новой строки.\nВведите {finishingString} для завершения словаря");
 
-         int previousWordsCount = dictionary.WordsCount;
+/*         int previousWordsCount = dictionary.WordsCount;
          while (ReadLineToDictionary(finishingString))
          {
             Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов");
             Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
             previousWordsCount = dictionary.WordsCount;
-         }
+         }*/
+         ReadDictionatyFromFile(@"C:/dict.txt");
 
          Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
          Console.WriteLine($"Введите текст для проверки. Для завершения, введите {finishingString}");

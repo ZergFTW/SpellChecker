@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -8,18 +9,21 @@ namespace SpellChecker
 {
    public class DictionaryTree
    {
-      private int MaxMisprints { get; }
-      private readonly Node root;
+      public int WordsCount { get; private set; }
+      public int MaxMisprints { get; }
+
+      private Dictionary<String, Node> dictionary;
+
+      public void Trim()
+      {
+
+      }
+
 
       public DictionaryTree(int maxMisprints = 2)
       {
          this.MaxMisprints = maxMisprints;
-         root = new Node(value:'\0');
-      }
-
-      public int WordsCount
-      {
-         get { return root.Index;  }
+         dictionary = new Dictionary<string, Node>();
       }
       
       /* Adds new word to dictionary.
@@ -27,14 +31,19 @@ namespace SpellChecker
       throw ArgumentException if word is empty or null */
       public bool AddWord(String word)
       {
-         Node correctWordNode = Node.AddWord(root, word);
+         if (String.IsNullOrEmpty(word))
+            throw new ArgumentException(nameof(word));
 
-         if (correctWordNode == null)
+         Node node = GetNode(word);
+         if (node.IsCorrectWord)
          {
-            // word already in the dictionary, we dont need to generate misprints
+            // node already marked as correct word
             return false;
          }
 
+         node.Word = word;
+         node.Index = WordsCount++;
+         
          int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
 
          for (int deletionsCount = 1; deletionsCount <= maxDeletions; ++deletionsCount)
@@ -45,11 +54,30 @@ namespace SpellChecker
             // push misprints to dictionary
             for (int i = 0; i < misprintsList.Count; ++i)
             {
-               Node.AddMisprintedWord(root, misprintsList[i], deletionsCount, correctWordNode);
+               Node misprintedNode = GetNode(misprintsList[i]);
+               misprintedNode.AddMisprint(deletionsCount, node);
             }
          }
-
          return true;
+      }
+
+      /* helper for AddWord returns node (new or existed) */
+      private Node GetNode(String word, bool createIfNotFound = true)
+      {
+         Node node = null;
+         word = word.ToLower();
+
+         if (dictionary.ContainsKey(word))
+         {
+            node = dictionary[word];
+         }
+         else if (createIfNotFound)
+         {
+            node = new Node();
+            dictionary.Add(word, node);
+         }
+
+         return node;
       }
 
       /* searches for input in dictionary
@@ -66,10 +94,10 @@ namespace SpellChecker
          if (String.IsNullOrEmpty(inputWord))
             throw new ArgumentNullException(nameof(inputWord));
 
-         Node endNode = Node.FindNodeByWord(root, inputWord);
+         Node inputNode = GetNode(inputWord, false);
 
          // exact word found! Yay!
-         if (endNode != null && endNode.IsEndOfWord)
+         if (inputNode != null && inputNode.IsCorrectWord)
          {
             return inputWord;
          }
@@ -122,7 +150,7 @@ namespace SpellChecker
                inputWithDels[misprintsLevel] = GenerateDeletions(inputWord, misprintsLevel);
             }
 
-            /* we need to iterate on all possible misprints combinations on this misprint level
+            /* we need to iterate over all possible misprints combinations at this misprint level
             for brevity d - deletion, i - insertion
             i.e. if we search for 3 misprints - it can be 3d + 0i or 2d + 1i or 1d + 2i or 0d + 3i 
             and we need all of them */
@@ -131,11 +159,11 @@ namespace SpellChecker
                int inserts = misprintsLevel - deletes;
                if (inserts >= inputWithDels.Length)
                {
-                  continue; // word is too short - there is not enough letters for such number of insert mistakes
+                  continue; // word is too short - there is not enough letters for such number of insert misprints
                }
 
                /* to find insertion misprints, remove as many letters from input and search for it in dictionary
-               first element of input with dels contains original word
+               inputWithDels[0] contains original word
                deletions already in the dictionary so we need just to look at dictionary misprints 
                and for combined misprints we remove some letters and search for deletions */
                for (int i = 0; i < inputWithDels[inserts].Count; ++i)
@@ -160,7 +188,7 @@ namespace SpellChecker
       // helper for GetPossibleMisprints
       private HashSet<Node> GetDeletionMisprints(int deletions, String word)
       {
-         Node node = Node.FindNodeByWord(root, word);
+         Node node = GetNode(word, false);
          if (node == null)
          {
             return new HashSet<Node>();
