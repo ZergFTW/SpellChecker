@@ -16,15 +16,13 @@ namespace SpellChecker
       public String Word { get; set; } // can be null
       public bool IsCorrectWord{ get { return (Word != null) ;} }
       
-      /* Array of HashSets of possible misprinted words 
-      array index points on number of misprints in given word
-      each list is sorted in alphabet order */
+      /* Array of possible misprinted words 
+      first array index points on number of misprints in given word */
       private Node[][] misprints;
       
-      /* return hashSet of misprints for given node and count of misprints
-      return empty hashSet if there is no misprints for given count
-      if count = 0, returns this word in hashSet (or empty hash set if this is not correct word)
-      throw ArgumentException if count < 0*/
+      /* return array of misprints for given node and count of misprints
+      return empty array if there is no misprints
+      return this node packed to new array if count = 0 */
       public Node[] GetMisprints(int misprintsCount)
       {
          if (misprintsCount < 0)
@@ -48,7 +46,7 @@ namespace SpellChecker
       throw ArgumentNullException if correctWordNode == null
       throw ArgumentException if correctWordNode is not a correct word
       throw ArgumentException if misprints count < 1 */
-      public void AddMisprint(int misprintsCount, Node correctWordNode)
+      public void AddMisprint(int misprintsCount, ref Node correctWordNode)
       {
          if (correctWordNode == null)
             throw new ArgumentNullException(nameof(correctWordNode));
@@ -59,7 +57,7 @@ namespace SpellChecker
          if (misprintsCount < 1)
             throw new ArgumentException(nameof(misprintsCount));
 
-         // if there is no misptints in ths node - create array and fill it with empty HashSets
+         // if there is no misptints in ths node - create array and fill it
          if (misprints == null)
          {
             misprints = new Node[misprintsCount][];
@@ -77,19 +75,16 @@ namespace SpellChecker
                misprints[i] = new Node[0];
             }
          }
-
-         Node.AddUnique(ref misprints[misprintsCount - 1], correctWordNode);
+         Node.AddUnique(ref misprints[misprintsCount - 1], ref correctWordNode);
       }
 
-      static public void AddUnique(ref Node[] array, Node newNode)
+      static public void AddUnique(ref Node[] array, ref Node newNode)
       {
-         if (array.Contains(newNode))
+         if (Array.IndexOf(array, newNode) < 0)
          {
-            return;
+            Array.Resize(ref array, array.Length + 1);
+            array[array.Length - 1] = newNode;
          }
-
-         Array.Resize(ref array, array.Length + 1);
-         array[array.Length - 1] = newNode;
       }
    }
 }

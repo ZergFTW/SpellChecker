@@ -12,7 +12,12 @@ namespace SpellChecker
       public int WordsCount { get; private set; }
       public int MaxMisprints { get; }
 
-      private Dictionary<String, Node> dictionary;
+      private IDictionary<String, Node> dictionary;
+
+      public void Trim()
+      {
+         dictionary = new SortedList<string, Node>(dictionary);
+      }
       
 
       public DictionaryTree(int maxMisprints = 2)
@@ -50,7 +55,7 @@ namespace SpellChecker
             for (int i = 0; i < misprintsList.Count; ++i)
             {
                Node misprintedNode = GetNode(misprintsList[i]);
-               misprintedNode.AddMisprint(deletionsCount, node);
+               misprintedNode.AddMisprint(deletionsCount, ref node);
             }
          }
          return true;
