@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SpellChecker
@@ -20,7 +21,7 @@ namespace SpellChecker
       {
          get { return root.Index;  }
       }
-
+      
       /* Adds new word to dictionary.
       Generates and adds all misprints for this word (only deletes)
       throw ArgumentException if word is empty or null */

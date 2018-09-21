@@ -9,6 +9,7 @@ namespace SpellChecker
 {
    public class Node
    {
+
       public char Value { get; }
       public Node ParentNode { get; }
 
@@ -18,7 +19,7 @@ namespace SpellChecker
       {
          get { return (Word != null) ;}
       }
-
+      
       /* unique index for each correct word
       root node contains smallest unused index */
       public int Index { get; private set; }
