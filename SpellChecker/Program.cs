@@ -11,30 +11,51 @@ namespace SpellChecker
 {
    class Program
    {
-      private static DictionaryTree dictionary;
+      private static Corrector dictionary;
       private const String finishingString = "===";
+      private const String dictionaryFile = @"dictionary.txt";
+      private const bool silentMode = false;
 
       private static void Main(string[] args)
       {
-         dictionary = new DictionaryTree(2);
+         dictionary = new Corrector(2);
 
-         Console.WriteLine("Добро пожаловать в программу Spell Checker!/n" +
-                           "Вы можете загрузить словарь с помощью ключа -d путь_к_словарю");
-         Console.WriteLine("Либо вводите слова через пробел или с новой строки." +
-                           $"Введите {finishingString} для завершения словаря");
+         var defaultConsoleOut = Console.Out;
 
-
-/*         int previousWordsCount = dictionary.WordsCount;
-         while (ReadLineToDictionary(finishingString))
+         Console.WriteLine(Environment.CurrentDirectory);
+         if (silentMode)
          {
-            Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов");
-            Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
-            previousWordsCount = dictionary.WordsCount;
-         }*/
-         ReadDictionatyFromFile(@"C:/dict.txt");
+            Console.SetOut(TextWriter.Null);
+         }
 
-         Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
-         Console.WriteLine($"Введите текст для проверки. Для завершения, введите {finishingString}");
+         if (ReadDictionatyFromFile(@"dictionary.txt") && !silentMode)
+         {
+            Console.WriteLine("Словарь загружен!");
+         }
+         else
+         {
+            Console.WriteLine("Добро пожаловать в программу Spell Checker!\n" +
+                              $"Можно загрузить словарь из файла, разместив {dictionaryFile} в папке программы\n" +
+                              "Словарь должен быть в UTF-8. Слова разделяются пробелами или переносами строк\n\n" +
+                              "Либо вводите слова через пробел или с новой строки.\n" +
+                              $"Введите {finishingString} отдельной строкой для завершения словаря");
+
+            int previousWordsCount = dictionary.WordsCount;
+
+            while (ReadLineToDictionary(finishingString))
+            {
+               Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов" +
+                                 $"Всего в словаре {dictionary.WordsCount} слов");
+
+               previousWordsCount = dictionary.WordsCount;
+            }
+         }
+
+         Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов\n" +
+                           "Вводите текст для проверки.\n" +
+                           $"Для завершения, введите {finishingString} отдельной строкой");
+
+         Console.SetOut(defaultConsoleOut);
 
          while (true)
          {
@@ -47,9 +68,20 @@ namespace SpellChecker
          }
       }
 
-      static void ReadDictionatyFromFile(String filePath)
+      static bool ReadDictionatyFromFile(String filePath)
       {
-         StreamReader sr = new StreamReader(filePath);
+         StreamReader sr;
+         try
+         {
+            sr = new StreamReader(filePath);
+         }
+         catch (Exception)
+         {
+            return false;
+         }
+
+         Console.WriteLine("Загружается словарь...");
+
          while (true)
          {
             String line = sr.ReadLine();
@@ -57,9 +89,10 @@ namespace SpellChecker
             {
                break;
             }
-
             AddLineToDictionary(line);
          }
+
+         return true;
       }
 
       // return false if user enters endLine as separate line

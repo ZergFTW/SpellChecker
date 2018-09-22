@@ -7,7 +7,7 @@ using System.Text;
 
 namespace SpellChecker
 {
-   public class DictionaryTree
+   public class Corrector
    {
       public int WordsCount { get; private set; }
       public int MaxMisprints { get; }
@@ -20,7 +20,7 @@ namespace SpellChecker
       }
       
 
-      public DictionaryTree(int maxMisprints = 2)
+      public Corrector(int maxMisprints = 2)
       {
          this.MaxMisprints = maxMisprints;
          dictionary = new Dictionary<string, Node>();

@@ -13,31 +13,31 @@ namespace SpellChecker.UnitTests
          [TestMethod]
          public void Length0Max5_Return0()
          {
-            Assert.AreEqual(DictionaryTree.MaxDeletionsForWordLength(0, 5), 0);
+            Assert.AreEqual(Corrector.MaxDeletionsForWordLength(0, 5), 0);
          }
 
          [TestMethod]
          public void Length1Max2_Return1()
          {
-            Assert.AreEqual(DictionaryTree.MaxDeletionsForWordLength(1, 2), 1);
+            Assert.AreEqual(Corrector.MaxDeletionsForWordLength(1, 2), 1);
          }
 
          [TestMethod]
          public void Length5Max10_Return3()
          {
-            Assert.AreEqual(DictionaryTree.MaxDeletionsForWordLength(5, 10), 3);
+            Assert.AreEqual(Corrector.MaxDeletionsForWordLength(5, 10), 3);
          }
 
          [TestMethod]
          public void Length5Max2_Return2()
          {
-            Assert.AreEqual(DictionaryTree.MaxDeletionsForWordLength(5, 2), 2);
+            Assert.AreEqual(Corrector.MaxDeletionsForWordLength(5, 2), 2);
          }
 
          [TestMethod]
          public void Length10_Return5()
          {
-            Assert.AreEqual(DictionaryTree.MaxDeletionsForWordLength(10), 5);
+            Assert.AreEqual(Corrector.MaxDeletionsForWordLength(10), 5);
          }
       }
 
@@ -47,7 +47,7 @@ namespace SpellChecker.UnitTests
          [TestMethod]
          public void Generate1DeletionsForWord_EquivalentGivenList()
          {
-            var generated = DictionaryTree.GenerateDeletions("orange", 1);
+            var generated = Corrector.GenerateDeletions("orange", 1);
             List<String> equivalent = new List<String>()
             {
                "range", "oange", "ornge", "orage", "orane", "orang"
@@ -58,7 +58,7 @@ namespace SpellChecker.UnitTests
          [TestMethod]
          public void Generate2DeletionsForWord_EquivalentGivenList()
          {
-            var generated = DictionaryTree.GenerateDeletions("orange", 2);
+            var generated = Corrector.GenerateDeletions("orange", 2);
             List<String> equivalent = new List<String>()
             {
                "rnge", "rage", "rane", "rang",
@@ -72,7 +72,7 @@ namespace SpellChecker.UnitTests
          [TestMethod]
          public void Generate3DeletionsForWord_EquivalentGivenList()
          {
-            var generated = DictionaryTree.GenerateDeletions("oranges", 3);
+            var generated = Corrector.GenerateDeletions("oranges", 3);
             List<String> equivalent = new List<String>()
             {
                "rnes", "rngs", "rnge",
@@ -89,19 +89,19 @@ namespace SpellChecker.UnitTests
          [ExpectedException(typeof(ArgumentException))]
          public void Generate3DeletionsForShorterWord_EmptyList()
          {
-            var generated = DictionaryTree.GenerateDeletions("cats", 3);
+            var generated = Corrector.GenerateDeletions("cats", 3);
          }
       }
 
       [TestClass]
       public class AddWordMethod
       {
-         private DictionaryTree dict;
+         private Corrector dict;
 
          [TestInitialize]
          public void InitializeDictionay()
          {
-            dict = new DictionaryTree(0);
+            dict = new Corrector(0);
          }
 
          [TestMethod]
@@ -121,7 +121,7 @@ namespace SpellChecker.UnitTests
       [TestClass]
       public class GetCorrectedWordMethod
       {
-         private DictionaryTree dict = new DictionaryTree(2);
+         private Corrector dict = new Corrector(2);
 
          [TestInitialize]
          public void InitializeDictionary()

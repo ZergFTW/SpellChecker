@@ -23,7 +23,7 @@ namespace SpellChecker.UnitTests
                Word = "ello"
             };
 
-            misprintedNode.AddMisprint(1, correctNode);
+            misprintedNode.AddMisprint(1, ref correctNode);
             Assert.AreEqual(correctNode, misprintedNode.GetMisprints(1)[0]);
          }
       }
