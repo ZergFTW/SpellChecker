@@ -43,28 +43,35 @@ namespace SpellChecker
 
          dictionary.Add(word, ++index);
 
-         int wordHash = word.GetHashCode();
-         int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
+         string lowerWord = word.ToLower();
 
+         int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
          for (int deletionsCount = 1; deletionsCount <= maxDeletions; ++deletionsCount)
          {
             // list of misprinted variants (deletions only)
-            List<String> misprintsList = GenerateDeletions(word, deletionsCount);
+            List<String> misprintsList = GenerateDeletions(lowerWord, deletionsCount);
 
             // push misprints to dictionary
             for (int i = 0; i < misprintsList.Count; ++i)
             {
-               if (!misprints.ContainsKey(wordHash))
+               int misprintHash = misprintsList[i].GetHashCode();
+               if (!misprints.ContainsKey(misprintHash))
                {
-                  misprints.Add(wordHash, new string[0]);
+                  misprints.Add(misprintHash, new string[1] {word});
                }
-               AddUnique(misprints[wordHash], misprintsList[i]);
+               else
+               {
+                  string[] mpArr = misprints[misprintHash];
+                  AddUnique(ref mpArr, word);
+                  misprints[misprintHash] = mpArr;
+               }
+
             }
          }
          return true;
       }
 
-      static public void AddUnique(string[] array, string word)
+      static public void AddUnique(ref string[] array, string word)
       {
          if (Array.IndexOf(array, word) < 0)
          {
@@ -82,7 +89,7 @@ namespace SpellChecker
       misprints with higher number of edits ignored, if there is some lower edits misprints
 
       if no word and misprints found - return original word as {word?} */
-      public String GetCorrectedWord(String inputWord)
+      public String GetCorrectedWord(string inputWord)
       {
          if (String.IsNullOrEmpty(inputWord))
             throw new ArgumentNullException(nameof(inputWord));
@@ -93,7 +100,7 @@ namespace SpellChecker
             return inputWord;
          }
 
-         List<Node> misprints = GetPossibleMisprints(inputWord);
+         List<string> misprints = GetAllPossibleCorrectWordsForMisprint(inputWord);
 
          if (misprints.Count == 0)
          {
@@ -101,7 +108,7 @@ namespace SpellChecker
          }
          else if (misprints.Count == 1)
          {
-            return misprints[0].Word;
+            return misprints[0];
          }
          else
          {
@@ -109,7 +116,7 @@ namespace SpellChecker
             sb.Append('{');
             for (int i = 0; i < misprints.Count; ++i)
             {
-               sb.Append(misprints[i].Word);
+               sb.Append(misprints[i]);
                sb.Append(" ");
             }
 
@@ -118,25 +125,19 @@ namespace SpellChecker
          }
       }
 
-      /* we have to check, because of collisions */
-      private bool IsPossibleMissprint(string correctWord, string misprintedWord, int editsCount)
-      {
-         return true;
-      }
-
       // helper for GetCorrectedWord
-      private List<Node> GetPossibleMisprints(String inputWord)
+      private List<string> GetAllPossibleCorrectWordsForMisprint(string misprintedWord)
       {
          // put results here
-         HashSet<Node> resultHash = new HashSet<Node>();
+         HashSet<String> resultHashSet = new HashSet<String>();
+         misprintedWord = misprintedWord.ToLower();
 
          // keep generated deletions for deeper level of misprints
-         int maxDeletionsForInput = MaxDeletionsForWordLength(inputWord.Length, MaxMisprints);
+         int maxDeletionsForInput = MaxDeletionsForWordLength(misprintedWord.Length, MaxMisprints);
          List<string>[] inputWithDels = new List<string>[maxDeletionsForInput + 1];
-         inputWithDels[0] = new List<string>
-         {
-            inputWord.ToLower() // for consistency we put original word as word with 0 deletes
-         };
+
+         // for consistency we put original word as word with 0 deletes
+         inputWithDels[0] = new List<string> { misprintedWord.ToLower() };
 
          // starting from one misprint
          for (int misprintsLevel = 1; misprintsLevel <= MaxMisprints; ++misprintsLevel)
@@ -144,7 +145,7 @@ namespace SpellChecker
             // first, lets generate deletions for current level of misprints
             if (maxDeletionsForInput >= misprintsLevel)
             {
-               inputWithDels[misprintsLevel] = GenerateDeletions(inputWord, misprintsLevel);
+               inputWithDels[misprintsLevel] = GenerateDeletions(misprintedWord, misprintsLevel);
             }
 
             /* we need to iterate over all possible misprints combinations at this misprint level
@@ -154,43 +155,76 @@ namespace SpellChecker
             for (int deletes = 0; deletes <= misprintsLevel; ++deletes)
             {
                int inserts = misprintsLevel - deletes;
+
+               // input word is too short - there is not enough letters for such number
+               // of insertion misprints (we didn't generated deletions for this level)
                if (inserts >= inputWithDels.Length)
                {
-                  continue; // word is too short - there is not enough letters for such number of insert misprints
+                  continue; 
                }
 
-               /* to find insertion misprints, remove as many letters from input and search for it in dictionary
-               inputWithDels[0] contains original word
-               deletions already in the dictionary so we need just to look at dictionary misprints 
-               and for combined misprints we remove some letters and search for deletions */
+               /* to find correct words for insertion misprints, remove as many letters from
+               input and search for it in the dictionary
+               deletions already in the misprints dictionary so we need just to look at misprints 
+               and for combined misprints we remove some letters and search in misprints */
                for (int i = 0; i < inputWithDels[inserts].Count; ++i)
                {
-                  resultHash.UnionWith(GetDeletionMisprints(deletes, inputWithDels[inserts][i]));
+                  resultHashSet.UnionWith(GetCorrectWordsForMisprint(inputWithDels[inserts][i], deletes));
                }
             }
 
-            if (resultHash.Count > 0) // we found something! 
+            if (resultHashSet.Count > 0) // we found something! 
             {
                break;
             }
-
          } // global misprints loop
 
-         List<Node> resultNodesList = resultHash.ToList();
-         // sorting by index - results must be in the same order as in the dictionary :-/
-         resultNodesList.Sort((a, b) => a.Index.CompareTo(b.Index));
-         return resultNodesList;
+         List<string> resultList = resultHashSet.ToList();
+         // sorting by index - results must be in the same order as they are in the dictionary :-/
+         resultList.Sort((a, b) => dictionary[a].CompareTo(dictionary[b]));
+         return resultList;
       }
 
-      // helper for GetPossibleMisprints
-      private Node[] GetDeletionMisprints(int deletions, String word)
+      /* helper for GetAllPossibleCorrectWordsForMisprint
+      returns all possible correct words for given word and deletions number 
+      0 deletions searches in correct words dictionary
+      if nothing gound - returns empry string array */
+      private string[] GetCorrectWordsForMisprint(string misprintedWord, int deletions)
       {
-         Node node = GetNode(word, false);
-         if (node == null)
+         string[] result = new string[0];
+
+         if (deletions == 0)
          {
-            return new Node[0];
+            if (dictionary.ContainsKey(misprintedWord))
+            {
+               // return packed original word (for consistency)
+               result = new string[] {misprintedWord};
+            }
+            return result;
          }
-         return node.GetMisprints(deletions);
+
+         int wordHash = misprintedWord.GetHashCode();
+         if (!misprints.ContainsKey(wordHash))
+         {
+            return result;
+         }
+
+         string[] correctWordsArray = misprints[wordHash];
+         if (correctWordsArray == null || correctWordsArray.Length == 0)
+         {
+            return result;
+         }
+
+         for (int i = 0; i < correctWordsArray.Length; ++i)
+         {
+            if (IsPossibleMissprint(correctWordsArray[i], misprintedWord, deletions))
+            {
+               AddUnique(ref result, correctWordsArray[i]);
+            }
+         }
+
+         return result;
+
       }
 
       /* calculates, how much deletes can be in word with given length
@@ -208,6 +242,66 @@ namespace SpellChecker
          {
             return maxPossibleDeletions < maxMisprintsForDictionary ? maxPossibleDeletions : maxMisprintsForDictionary;
          }
+      }
+
+      /* Checks is it possible misprint for given word
+      Checks only deletions misprints 
+      We need to do this because of collisions and because all correct words 
+         saves to one array per misprint (no matters how many deletes in misprint) */
+      static public bool IsPossibleMissprint(string correctWord, string misprintedWord, int numberOfDeletions)
+      {
+         if (numberOfDeletions < 1)
+            throw new ArgumentException(nameof(numberOfDeletions));
+
+         if (String.IsNullOrEmpty(correctWord))
+            throw new ArgumentException(nameof(correctWord));
+
+         if (misprintedWord == null) // CAN be empty word
+            throw new ArgumentException(nameof(misprintedWord));
+
+         // we cant delete this much letters from given word
+         if (numberOfDeletions > MaxDeletionsForWordLength(correctWord.Length))
+         {
+            return false;
+         }
+
+         // correct word should be exactly this long
+         if (correctWord.Length != misprintedWord.Length + numberOfDeletions)
+         {
+            return false;
+         }
+
+         correctWord = correctWord.ToLower();
+         misprintedWord = misprintedWord.ToLower();
+
+         // we need to check, is it possible to get misprinted word from correct via exactly given
+         // number of deletes, and we can't delete two adjasted letters
+         int correctionsMade = 0;
+         int previosDeletedCharacter = -2;
+         for (int currentChar = 0; currentChar < correctWord.Length; ++currentChar)
+         {
+            // different chars - remove it!
+            if (currentChar >= misprintedWord.Length || correctWord[currentChar] != misprintedWord[currentChar])
+            {
+               // we need to check, maybe previous characters same as current - so we can remove them to
+               // increase gap for next potential deletion
+               while (currentChar > 0 && correctWord[currentChar] == correctWord[currentChar - 1] 
+                      && currentChar - 1 != previosDeletedCharacter) // we can't delete two adjasted letters
+               {
+                  --currentChar;
+               }
+               correctWord = correctWord.Remove(currentChar, 1);
+               previosDeletedCharacter = currentChar;
+               ++correctionsMade;
+               if (correctionsMade == numberOfDeletions)
+               {
+                  break;
+               }
+            }
+
+         }
+
+         return correctWord == misprintedWord;
       }
 
       /* generates possible mistakes - only deletes, excluding deletes in adjasted positions

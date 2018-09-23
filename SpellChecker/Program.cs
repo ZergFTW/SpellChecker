@@ -22,7 +22,6 @@ namespace SpellChecker
 
          var defaultConsoleOut = Console.Out;
 
-         Console.WriteLine(Environment.CurrentDirectory);
          if (silentMode)
          {
             Console.SetOut(TextWriter.Null);

@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace SpellChecker.UnitTests
 {
    [TestClass]
-   public class DictionaryTreeTests
+   public class CorrectorTests
    {
       [TestClass]
       public class MaxDeletionsForWordLengthMethod
@@ -94,6 +94,58 @@ namespace SpellChecker.UnitTests
       }
 
       [TestClass]
+      public class IsPossibleMisprintMethod
+      {
+         [TestMethod]
+         public void IsPossibleForOneDeletion_ReturnTrue()
+         {
+            Assert.IsTrue(Corrector.IsPossibleMissprint("Hello", "hllo", 1));
+         }
+
+         [TestMethod]
+         public void IsPossibleForTwoSeparateDeletions_ReturnTrue()
+         {
+            Assert.IsTrue(Corrector.IsPossibleMissprint("Hello", "hlo", 2));
+         }
+
+         [TestMethod]
+         public void IsPossibleForTwoAdjastedDeletions_ReturnFalse()
+         {
+            Assert.IsFalse(Corrector.IsPossibleMissprint("Hello", "heo", 2));
+         }
+
+         [TestMethod]
+         public void IsPossibleForFirstDeleted_ReturnTrue()
+         {
+            Assert.IsTrue(Corrector.IsPossibleMissprint("hello", "ello", 1));
+         }
+
+         [TestMethod]
+         public void IsPossibleForLastDeleted_ReturnTrue()
+         {
+            Assert.IsTrue(Corrector.IsPossibleMissprint("hello", "hell", 1));
+         }
+
+         [TestMethod]
+         public void IsPossibleForTwoSeparateWithSameLetter_returnTrue()
+         {
+            Assert.IsTrue(Corrector.IsPossibleMissprint("helll", "hel", 2));
+         }
+
+         [TestMethod]
+         public void IsPossibleForThreeAdjastedWithSameLetterAtTheEnd_returnFalse()
+         {
+            Assert.IsFalse(Corrector.IsPossibleMissprint("hellll", "hel", 3));
+         }
+
+         [TestMethod]
+         public void IsPossibleForThreeAdjastedWithSameLetterAtTheBegin_returnFalse()
+         {
+            Assert.IsFalse(Corrector.IsPossibleMissprint("hhhhelo", "helo", 3));
+         }
+      }
+
+      [TestClass]
       public class AddWordMethod
       {
          private Corrector dict;
@@ -105,13 +157,13 @@ namespace SpellChecker.UnitTests
          }
 
          [TestMethod]
-         public void AddWord_AddsWord()
+         public void AddWord_ReturnTrue()
          {
             Assert.IsTrue(dict.AddWord("Hello"));
          }
 
          [TestMethod]
-         public void AddWord_AddsMisprints()
+         public void AddSameWord_ReturnFalse()
          {
             dict.AddWord("hello");
             Assert.IsFalse(dict.AddWord("hello"));
@@ -187,6 +239,9 @@ namespace SpellChecker.UnitTests
          {
             Assert.AreEqual("{z?}", dict.GetCorrectedWord("z"));
          }
+         
       }
+
+
    }
 }
