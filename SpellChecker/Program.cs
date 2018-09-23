@@ -27,11 +27,7 @@ namespace SpellChecker
             Console.SetOut(TextWriter.Null);
          }
 
-         if (ReadDictionatyFromFile(@"dictionary.txt") && !silentMode)
-         {
-            Console.WriteLine("Словарь загружен!");
-         }
-         else
+         if (!ReadDictionatyFromFile(@"dictionary.txt") && !silentMode)
          {
             Console.WriteLine("Добро пожаловать в программу Spell Checker!\n" +
                               $"Можно загрузить словарь из файла, разместив {dictionaryFile} в папке программы\n" +
@@ -49,6 +45,8 @@ namespace SpellChecker
                previousWordsCount = dictionary.WordsCount;
             }
          }
+         Console.WriteLine("Словарь сжимается...");
+         dictionary.TrimExcess();
 
          Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов\n" +
                            "Вводите текст для проверки.\n" +
@@ -79,7 +77,7 @@ namespace SpellChecker
             return false;
          }
 
-         Console.WriteLine("Загружается словарь...");
+         Console.WriteLine("Cловарь загружается...");
 
          while (true)
          {

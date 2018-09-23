@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Data;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -9,24 +10,31 @@ namespace SpellChecker
 {
    public class Corrector
    {
-      public int WordsCount { get; private set; }
+      public int WordsCount { get { return dictionary.Count; }}
       public int MaxMisprints { get; }
 
-      // only correct words, int represents index of word, so we coud print results in correct order
-      private Dictionary<string, int> dictionary;
+      // only correct words, int represents index of word,
+      // so we coud print results in the order they were added 
+      private IDictionary<string, int> dictionary;
       private int index;
 
       // everything considered misprints. key is hash of the word
-      private Dictionary<int, string[]> misprints;
+      private IDictionary<int, string[]> misprints;
       
-
       public Corrector(int maxMisprints = 2)
       {
          this.MaxMisprints = maxMisprints;
          dictionary = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
          misprints = new Dictionary<int, string[]>();
       }
-      
+
+      public void TrimExcess()
+      {
+         dictionary = new SortedList<string, int>(dictionary);
+         misprints = new SortedList<int, string[]>(misprints);
+         GC.Collect();
+      }
+
       /* Adds new word to dictionary.
       Generates and adds all misprints for this word (only deletes)
       throw ArgumentException if word is empty or null */
@@ -41,17 +49,15 @@ namespace SpellChecker
             return false;
          }
 
-         dictionary.Add(word, ++index);
-
-         string lowerWord = word.ToLower();
-
+         dictionary.Add(word, index++);
+         
          int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
          for (int deletionsCount = 1; deletionsCount <= maxDeletions; ++deletionsCount)
          {
             // list of misprinted variants (deletions only)
-            List<String> misprintsList = GenerateDeletions(lowerWord, deletionsCount);
+            List<String> misprintsList = GenerateDeletions(word, deletionsCount);
 
-            // push misprints to dictionary
+            // add misprints to dictionary
             for (int i = 0; i < misprintsList.Count; ++i)
             {
                int misprintHash = misprintsList[i].GetHashCode();
@@ -81,7 +87,7 @@ namespace SpellChecker
       }
 
       /* searches for input in dictionary
-      if word found - returns it as is
+      if word found - returns it as is in input
 
       if one misprint with minimal edits found - return it as in dictionary
       otherwise returns all possible misprints with minimal number of edits as {possibleWord1, PossibleWord2, ...}
