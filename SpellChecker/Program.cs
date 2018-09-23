@@ -13,47 +13,55 @@ namespace SpellChecker
    {
       private static Corrector dictionary;
       private const String finishingString = "===";
-      private const String dictionaryFile = @"dictionary.txt";
-      private const bool silentMode = false;
+      private const String dictionaryFile = "dictionary.txt";
+
+      private static bool quietMode = false;
+      private static bool disableTrim = false;
 
       private static void Main(string[] args)
       {
          dictionary = new Corrector(2);
 
-         var defaultConsoleOut = Console.Out;
+         ReadCommandLine(args);
 
-         if (silentMode)
+         var defaultConsoleOut = Console.Out;
+         if (quietMode)
          {
             Console.SetOut(TextWriter.Null);
          }
 
-         if (!ReadDictionatyFromFile(@"dictionary.txt") && !silentMode)
+         if (!ReadDictionatyFromFile(dictionaryFile))
          {
             Console.WriteLine("Добро пожаловать в программу Spell Checker!\n" +
+                              "Запустите программу с ключом -q, чтобы включить тихий режим\n" +
+                              "Ключ -u отключит сжатие словаря (ускорит загрузку и поиск, но увеличит портребление памяти)\n" +
                               $"Можно загрузить словарь из файла, разместив {dictionaryFile} в папке программы\n" +
                               "Словарь должен быть в UTF-8. Слова разделяются пробелами или переносами строк\n\n" +
                               "Либо вводите слова через пробел или с новой строки.\n" +
                               $"Введите {finishingString} отдельной строкой для завершения словаря");
 
             int previousWordsCount = dictionary.WordsCount;
-
             while (ReadLineToDictionary(finishingString))
             {
                Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов" +
                                  $"Всего в словаре {dictionary.WordsCount} слов");
-
                previousWordsCount = dictionary.WordsCount;
             }
          }
-         Console.WriteLine("Словарь сжимается...");
-         dictionary.TrimExcess();
+
+         if (!disableTrim) { 
+            Console.WriteLine("Словарь сжимается...");
+            dictionary.TrimExcess();
+         }
 
          Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов\n" +
                            "Вводите текст для проверки.\n" +
                            $"Для завершения, введите {finishingString} отдельной строкой");
-
-         Console.SetOut(defaultConsoleOut);
-
+         if (quietMode)
+         {
+            Console.SetOut(defaultConsoleOut);
+         }
+         
          while (true)
          {
             String correctedLine = ReadLineToCorrection(finishingString);
@@ -137,6 +145,25 @@ namespace SpellChecker
       static string CorrectWord(Match m)
       {
          return dictionary.GetCorrectedWord(m.Value);
+      }
+
+      static void ReadCommandLine(string[] args)
+      {
+         if (args == null || args.Length < 1 || args.Length > 2)
+         {
+            return;
+         }
+
+         if (args.Contains("-q", StringComparer.OrdinalIgnoreCase))
+         {
+            quietMode = true;
+         }
+
+         if (args.Contains("-u", StringComparer.OrdinalIgnoreCase))
+         {
+            disableTrim = true;
+         }
+
       }
    }
 }

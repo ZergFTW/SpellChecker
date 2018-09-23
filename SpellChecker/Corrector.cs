@@ -14,11 +14,12 @@ namespace SpellChecker
       public int MaxMisprints { get; }
 
       // only correct words, int represents index of word,
-      // so we coud print results in the order they were added 
+      // so we could print results in the order they were added 
       private IDictionary<string, int> dictionary;
       private int index;
 
-      // everything considered misprints. key is hash of the word
+      // everything considered misprints. key is the hash of the word with generated misprint,
+      // string[] contains correct words
       private IDictionary<int, string[]> misprints;
       
       public Corrector(int maxMisprints = 2)
@@ -28,10 +29,21 @@ namespace SpellChecker
          misprints = new Dictionary<int, string[]>();
       }
 
+      /* Use this if no more words will be added to dictionary
+      when called for the first time, converts dictionarys to sortedLists
+      following calls just TrimExcess this */
       public void TrimExcess()
       {
-         dictionary = new SortedList<string, int>(dictionary);
-         misprints = new SortedList<int, string[]>(misprints);
+         if (dictionary.GetType() == typeof(SortedList<string, int>))
+         {
+            ((SortedList<string, int>)dictionary).TrimExcess();
+            ((SortedList<int, string>)dictionary).TrimExcess();
+         }
+         else
+         {
+            dictionary = new SortedList<string, int>(dictionary);
+            misprints = new SortedList<int, string[]>(misprints);
+         }
          GC.Collect();
       }
 
@@ -253,7 +265,7 @@ namespace SpellChecker
       /* Checks is it possible misprint for given word
       Checks only deletions misprints 
       We need to do this because of collisions and because all correct words 
-         saves to one array per misprint (no matters how many deletes in misprint) */
+      saves to one array per misprint (no matters how many deletes in misprint) */
       static public bool IsPossibleMissprint(string correctWord, string misprintedWord, int numberOfDeletions)
       {
          if (numberOfDeletions < 1)
@@ -369,18 +381,18 @@ namespace SpellChecker
       }
 
       // helper for GenerateDeletions
-      private static int FindClosestUnshiftedDeletePos(int[] deletes)
+      private static int FindClosestUnshiftedDeletePos(int[] deletePositions)
       {
-         if (deletes.Length == 1)
+         if (deletePositions.Length == 1)
          {
             return -1;
          }
 
          // searching from right to left, starting from penult element
-         for (int i = deletes.Length - 2; i >= 0; --i)
+         for (int i = deletePositions.Length - 2; i >= 0; --i)
          {
             // there is more than 1 letter beetwen this letter and letter to the right
-            if (deletes[i] < deletes[i + 1] - 2) 
+            if (deletePositions[i] < deletePositions[i + 1] - 2) 
             {
                return i;
             }
@@ -391,11 +403,11 @@ namespace SpellChecker
       }
 
       // helper for GenerateDeletions
-      private static String RemoveLetters(String word, int[] letters)
+      private static String RemoveLetters(String word, int[] letterPositions)
       {
-         for (int i = letters.Length - 1; i >= 0; --i)
+         for (int i = letterPositions.Length - 1; i >= 0; --i)
          {
-            word = word.Remove(letters[i], 1);
+            word = word.Remove(letterPositions[i], 1);
          }
          return word;
       }
