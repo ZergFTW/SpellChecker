@@ -12,18 +12,19 @@ namespace SpellChecker
       public int WordsCount { get; private set; }
       public int MaxMisprints { get; }
 
-      private IDictionary<String, Node> dictionary;
+      // only correct words, int represents index of word, so we coud print results in correct order
+      private Dictionary<string, int> dictionary;
+      private int index;
 
-      public void Trim()
-      {
-         dictionary = new SortedList<string, Node>(dictionary);
-      }
+      // everything considered misprints. key is hash of the word
+      private Dictionary<int, string[]> misprints;
       
 
       public Corrector(int maxMisprints = 2)
       {
          this.MaxMisprints = maxMisprints;
-         dictionary = new Dictionary<string, Node>();
+         dictionary = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+         misprints = new Dictionary<int, string[]>();
       }
       
       /* Adds new word to dictionary.
@@ -34,16 +35,15 @@ namespace SpellChecker
          if (String.IsNullOrEmpty(word))
             throw new ArgumentException(nameof(word));
 
-         Node node = GetNode(word);
-         if (node.IsCorrectWord)
+         if (dictionary.ContainsKey(word))
          {
-            // node already marked as correct word
+            // already in the dictionary as correct word
             return false;
          }
 
-         node.Word = word;
-         node.Index = WordsCount++;
-         
+         dictionary.Add(word, ++index);
+
+         int wordHash = word.GetHashCode();
          int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
 
          for (int deletionsCount = 1; deletionsCount <= maxDeletions; ++deletionsCount)
@@ -54,30 +54,23 @@ namespace SpellChecker
             // push misprints to dictionary
             for (int i = 0; i < misprintsList.Count; ++i)
             {
-               Node misprintedNode = GetNode(misprintsList[i]);
-               misprintedNode.AddMisprint(deletionsCount, ref node);
+               if (!misprints.ContainsKey(wordHash))
+               {
+                  misprints.Add(wordHash, new string[0]);
+               }
+               AddUnique(misprints[wordHash], misprintsList[i]);
             }
          }
          return true;
       }
 
-      /* helper for AddWord returns node (new or existed) */
-      private Node GetNode(String word, bool createIfNotFound = true)
+      static public void AddUnique(string[] array, string word)
       {
-         Node node = null;
-         word = word.ToLower();
-
-         if (dictionary.ContainsKey(word))
+         if (Array.IndexOf(array, word) < 0)
          {
-            node = dictionary[word];
+            Array.Resize(ref array, array.Length + 1);
+            array[array.Length - 1] = word;
          }
-         else if (createIfNotFound)
-         {
-            node = new Node();
-            dictionary.Add(word, node);
-         }
-
-         return node;
       }
 
       /* searches for input in dictionary
@@ -94,10 +87,8 @@ namespace SpellChecker
          if (String.IsNullOrEmpty(inputWord))
             throw new ArgumentNullException(nameof(inputWord));
 
-         Node inputNode = GetNode(inputWord, false);
-
          // exact word found! Yay!
-         if (inputNode != null && inputNode.IsCorrectWord)
+         if (dictionary.ContainsKey(inputWord))
          {
             return inputWord;
          }
@@ -125,6 +116,12 @@ namespace SpellChecker
             sb[sb.Length - 1] = '}';
             return sb.ToString();
          }
+      }
+
+      /* we have to check, because of collisions */
+      private bool IsPossibleMissprint(string correctWord, string misprintedWord, int editsCount)
+      {
+         return true;
       }
 
       // helper for GetCorrectedWord
