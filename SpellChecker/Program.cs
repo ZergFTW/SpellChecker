@@ -5,32 +5,63 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using SpellChecker;
+using System.Runtime;
 
 namespace SpellChecker
 {
    class Program
    {
-      private static DictionaryTree dictionary;
+      private static Corrector dictionary;
       private const String finishingString = "===";
+      private const String dictionaryFile = "dictionary.txt";
+
+      private static bool quietMode = false;
+      private static bool disableTrim = false;
 
       private static void Main(string[] args)
       {
-         dictionary = new DictionaryTree(2);
+         dictionary = new Corrector(2);
 
-         Console.WriteLine("Добро пожаловать в программу Spell Checker!");
-         Console.WriteLine($"Вводите слова для словаря через пробел или с новой строки.\nВведите {finishingString} для завершения словаря");
+         ReadCommandLine(args);
 
-         int previousWordsCount = dictionary.WordsCount;
-         while (ReadLineToDictionary(finishingString))
+         var defaultConsoleOut = Console.Out;
+         if (quietMode)
          {
-            Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов");
-            Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
-            previousWordsCount = dictionary.WordsCount;
+            Console.SetOut(TextWriter.Null);
          }
 
-         Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов");
-         Console.WriteLine($"Введите текст для проверки. Для завершения, введите {finishingString}");
+         if (!ReadDictionatyFromFile(dictionaryFile))
+         {
+            Console.WriteLine("Добро пожаловать в программу Spell Checker!\n" +
+                              "Запустите программу с ключом -q, чтобы включить тихий режим\n" +
+                              "Ключ -u отключит сжатие словаря (ускорит загрузку и поиск, но увеличит портребление памяти)\n" +
+                              $"Можно загрузить словарь из файла, разместив {dictionaryFile} в папке программы\n" +
+                              "Словарь должен быть в UTF-8. Слова разделяются пробелами или переносами строк\n\n" +
+                              "Либо вводите слова через пробел или с новой строки.\n" +
+                              $"Введите {finishingString} отдельной строкой для завершения словаря");
 
+            int previousWordsCount = dictionary.WordsCount;
+            while (ReadLineToDictionary(finishingString))
+            {
+               Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов" +
+                                 $"Всего в словаре {dictionary.WordsCount} слов");
+               previousWordsCount = dictionary.WordsCount;
+            }
+         }
+
+         if (!disableTrim) { 
+            Console.WriteLine("Словарь сжимается...");
+            dictionary.TrimExcess();
+         }
+
+         Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов\n" +
+                           "Вводите текст для проверки.\n" +
+                           $"Для завершения, введите {finishingString} отдельной строкой");
+         if (quietMode)
+         {
+            Console.SetOut(defaultConsoleOut);
+         }
+         
          while (true)
          {
             String correctedLine = ReadLineToCorrection(finishingString);
@@ -42,9 +73,20 @@ namespace SpellChecker
          }
       }
 
-      static void ReadDictionatyFromFile(String filePath)
+      static bool ReadDictionatyFromFile(String filePath)
       {
-         StreamReader sr = new StreamReader(filePath);
+         StreamReader sr;
+         try
+         {
+            sr = new StreamReader(filePath);
+         }
+         catch (Exception)
+         {
+            return false;
+         }
+
+         Console.WriteLine("Cловарь загружается...");
+
          while (true)
          {
             String line = sr.ReadLine();
@@ -52,9 +94,10 @@ namespace SpellChecker
             {
                break;
             }
-
             AddLineToDictionary(line);
          }
+
+         return true;
       }
 
       // return false if user enters endLine as separate line
@@ -102,6 +145,25 @@ namespace SpellChecker
       static string CorrectWord(Match m)
       {
          return dictionary.GetCorrectedWord(m.Value);
+      }
+
+      static void ReadCommandLine(string[] args)
+      {
+         if (args == null || args.Length < 1 || args.Length > 2)
+         {
+            return;
+         }
+
+         if (args.Contains("-q", StringComparer.OrdinalIgnoreCase))
+         {
+            quietMode = true;
+         }
+
+         if (args.Contains("-u", StringComparer.OrdinalIgnoreCase))
+         {
+            disableTrim = true;
+         }
+
       }
    }
 }

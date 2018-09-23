@@ -49,9 +49,8 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="NodeTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="DictionaryTreeTests.cs" />
+    <Compile Include="CorrectorTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
