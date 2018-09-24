@@ -190,7 +190,19 @@ namespace SpellChecker.UnitTests
          [TestMethod]
          public void SearchForCorrectWord_ReturnOriginalWord()
          {
-            Assert.AreEqual("Rain", dict.GetCorrectedWord("Rain"));
+            Assert.AreEqual("pain", dict.GetCorrectedWord("pain"));
+         }
+
+         [TestMethod]
+         public void SearchForCorrectWordInUpperCase_ReturnOriginalWord()
+         {
+            Assert.AreEqual("PAIN", dict.GetCorrectedWord("PAIN"));
+         }
+
+         [TestMethod]
+         public void SearchForiNCorrectWordInUpperCase_ReturnCorrectedWord()
+         {
+            Assert.AreEqual("{rain in}", dict.GetCorrectedWord("RIN"));
          }
 
          [TestMethod]

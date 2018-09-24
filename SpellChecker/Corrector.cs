@@ -40,7 +40,7 @@ namespace SpellChecker
          }
          else
          {
-            dictionary = new SortedList<string, int>(dictionary);
+            dictionary = new SortedList<string, int>(dictionary, StringComparer.InvariantCultureIgnoreCase);
             misprints = new SortedList<int, string[]>(misprints);
          }
          GC.Collect();
