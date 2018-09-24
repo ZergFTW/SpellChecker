@@ -16,7 +16,6 @@ namespace SpellChecker
       // only correct words, int represents index of word,
       // so we could print results in the order they were added 
       private IDictionary<string, int> dictionary;
-      private int index;
 
       // everything considered misprints. key is the hash of the word with generated misprint,
       // string[] contains correct words
@@ -25,13 +24,13 @@ namespace SpellChecker
       public Corrector(int maxMisprints = 2)
       {
          this.MaxMisprints = maxMisprints;
-         dictionary = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+         dictionary = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
          misprints = new Dictionary<int, string[]>();
       }
 
-      /* Use this if no more words will be added to dictionary
+      /* Use this if no more words will be added to the dictionary
       when called for the first time, converts dictionarys to sortedLists
-      following calls just TrimExcess this */
+      following calls just TrimExcess those lists */
       public void TrimExcess()
       {
          if (dictionary.GetType() == typeof(SortedList<string, int>))
@@ -61,7 +60,7 @@ namespace SpellChecker
             return false;
          }
 
-         dictionary.Add(word, index++);
+         dictionary.Add(word, dictionary.Count);
          
          int maxDeletions = MaxDeletionsForWordLength(word.Length, MaxMisprints);
          for (int deletionsCount = 1; deletionsCount <= maxDeletions; ++deletionsCount)
@@ -87,15 +86,6 @@ namespace SpellChecker
             }
          }
          return true;
-      }
-
-      static public void AddUnique(ref string[] array, string word)
-      {
-         if (Array.IndexOf(array, word) < 0)
-         {
-            Array.Resize(ref array, array.Length + 1);
-            array[array.Length - 1] = word;
-         }
       }
 
       /* searches for input in dictionary
@@ -410,6 +400,16 @@ namespace SpellChecker
             word = word.Remove(letterPositions[i], 1);
          }
          return word;
+      }
+
+
+      static private void AddUnique(ref string[] array, string word)
+      {
+         if (Array.IndexOf(array, word) < 0)
+         {
+            Array.Resize(ref array, array.Length + 1);
+            array[array.Length - 1] = word;
+         }
       }
    }
 }

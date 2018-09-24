@@ -18,17 +18,19 @@ namespace SpellChecker
       private static bool quietMode = false;
       private static bool disableTrim = false;
 
+      private static TextWriter defaultConsoleOut;
+
       private static void Main(string[] args)
       {
-         dictionary = new Corrector(2);
-
          ReadCommandLine(args);
 
-         var defaultConsoleOut = Console.Out;
          if (quietMode)
          {
+            defaultConsoleOut = Console.Out;
             Console.SetOut(TextWriter.Null);
          }
+
+         dictionary = new Corrector(2);
 
          if (!ReadDictionatyFromFile(dictionaryFile))
          {
@@ -43,7 +45,7 @@ namespace SpellChecker
             int previousWordsCount = dictionary.WordsCount;
             while (ReadLineToDictionary(finishingString))
             {
-               Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов" +
+               Console.WriteLine($"Добавлено {dictionary.WordsCount - previousWordsCount} слов\n" +
                                  $"Всего в словаре {dictionary.WordsCount} слов");
                previousWordsCount = dictionary.WordsCount;
             }
@@ -56,7 +58,8 @@ namespace SpellChecker
 
          Console.WriteLine($"Всего в словаре {dictionary.WordsCount} слов\n" +
                            "Вводите текст для проверки.\n" +
-                           $"Для завершения, введите {finishingString} отдельной строкой");
+                           $"Ведите {finishingString} отдельной строкой для выхода из программы");
+
          if (quietMode)
          {
             Console.SetOut(defaultConsoleOut);
@@ -139,7 +142,7 @@ namespace SpellChecker
          }
 
          Regex wordRegex = new Regex(@"\w+");
-         return wordRegex.Replace(input, CorrectWord);
+         return wordRegex.Replace(input, m => { return dictionary.GetCorrectedWord(m.Value); });
       }
 
       static string CorrectWord(Match m)

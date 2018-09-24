@@ -45,7 +45,7 @@ namespace SpellChecker.UnitTests
       public class GenerateDeletionsMethod
       {
          [TestMethod]
-         public void Generate1DeletionsForWord_EquivalentGivenList()
+         public void Generate1DeletionForWord_EquivalentGivenList()
          {
             var generated = Corrector.GenerateDeletions("orange", 1);
             List<String> equivalent = new List<String>()
@@ -90,6 +90,7 @@ namespace SpellChecker.UnitTests
          public void Generate3DeletionsForShorterWord_EmptyList()
          {
             var generated = Corrector.GenerateDeletions("cats", 3);
+            Assert.IsTrue(generated.Count == 0);
          }
       }
 
